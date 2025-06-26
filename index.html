@@ -5,49 +5,81 @@
   <title>TMDb Random Movie</title>
   <style>
     body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
-    form input, form button { padding: .5em; margin-right: .5em; }
+    form select, form button { padding: .5em; margin-right: .5em; }
     .movie { border: 1px solid #ccc; padding: 1em; margin-top: 1em; }
     .movie img { max-width: 100px; float: right; }
   </style>
 </head>
 <body>
 
-  <h1>Surprise-me Movie</h1>
+  <h1>Surprise-Me Movie</h1>
   <form id="filterForm">
-    <input name="genre"    placeholder="Genre" />
-    <input name="year"     placeholder="Year" type="number" />
-    <input name="director" placeholder="Director" />
-    <input name="actor"    placeholder="Actor" />
+    <select name="genre" id="genreSelect">
+      <option value="">All Genres</option>
+    </select>
+    <input name="year" placeholder="Year" type="number" />
+    <select name="director" id="directorSelect">
+      <option value="">All Directors</option>
+    </select>
+    <select name="actor" id="actorSelect">
+      <option value="">All Actors</option>
+    </select>
     <button type="submit">Go!</button>
   </form>
 
   <div id="result"></div>
 
   <script>
-    const form   = document.getElementById('filterForm');
-    const result = document.getElementById('result');
-    const API    = 'https://your-backend.example.com/random-movie'; // adapte l’URL
+    const API_BASE   = 'https://your-backend.example.com';
+    const form       = document.getElementById('filterForm');
+    const resultDiv  = document.getElementById('result');
+    const genreEl    = document.getElementById('genreSelect');
+    const directorEl = document.getElementById('directorSelect');
+    const actorEl    = document.getElementById('actorSelect');
+
+    // Helper to populate a <select> from an endpoint
+    async function populateSelect(url, el, label) {
+      try {
+        const res = await fetch(API_BASE + url);
+        const list = await res.json();
+        list.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item;
+          opt.textContent = item;
+          el.append(opt);
+        });
+      } catch (e) {
+        console.error(`Failed to load ${label}`, e);
+      }
+    }
+
+    // On load, fetch all genres, directors, actors
+    window.addEventListener('DOMContentLoaded', () => {
+      populateSelect('/genres',    genreEl,    'genres');
+      populateSelect('/directors', directorEl, 'directors');
+      populateSelect('/actors',    actorEl,    'actors');
+    });
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      result.innerHTML = 'Loading…';
+      resultDiv.innerHTML = 'Loading…';
       const params = new URLSearchParams(new FormData(form));
-      const res    = await fetch(API + '?' + params);
+      const res    = await fetch(API_BASE + '/random-movie?' + params);
       if (!res.ok) {
-        result.innerHTML = 'Error fetching movie';
+        resultDiv.innerHTML = 'Error fetching movie';
         return;
       }
       const m = await res.json();
-      result.innerHTML = `
+      resultDiv.innerHTML = `
         <div class="movie">
-          <h2>${m.title_fr} (${m.title_original||''})</h2>
+          <h2>${m.title_fr} <small>(${m.title_original||''})</small></h2>
           <img src="${m.poster_url||''}" alt="poster">
           <p><strong>Director:</strong> ${m.director}</p>
           <p><strong>Cast:</strong> ${m.actors.join(', ')}</p>
           <p><strong>Release:</strong> ${m.release_date}</p>
           <p><strong>Rating:</strong> ${m.vote_average} (${m.vote_count} votes)</p>
           <p><strong>Genres:</strong> ${m.genres.join(', ')}</p>
-          <p><strong>Stream:</strong> ${m.providers.flatrate.join(', ')}</p>
+          <p><strong>Subscription:</strong> ${m.providers.flatrate.join(', ')}</p>
           <p><strong>Rent:</strong> ${m.providers.rent.join(', ')}</p>
           <p><strong>Buy:</strong> ${m.providers.buy.join(', ')}</p>
         </div>`;
