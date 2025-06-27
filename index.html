@@ -2,14 +2,17 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Smash movie</title>
+  <title>Smash Movie</title>
   <style>
-    /* (idem) */
+    body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; }
+    form select, form input, form button { padding: .5em; margin-right: .5em; }
+    .movie { border: 1px solid #ccc; padding: 1em; margin-top: 1em; }
+    .movie img { max-width: 100px; float: right; }
   </style>
 </head>
 <body>
 
-  <h1>Smash movie</h1>
+  <h1>Smash Movie</h1>
   <form id="filterForm">
     <select name="genre" id="genreSelect">
       <option value="">Tous les genres</option>
@@ -27,69 +30,73 @@
   <div id="result"></div>
 
   <script>
-    let movies = [];
+    const API_BASE    = 'http://127.0.0.1:8000';
+    const genreEl     = document.getElementById('genreSelect');
+    const directorEl  = document.getElementById('directorSelect');
+    const actorEl     = document.getElementById('actorSelect');
+    const form        = document.getElementById('filterForm');
+    const resultDiv   = document.getElementById('result');
 
-    fetch('movies.json')
-      .then(r => r.json())
-      .then(data => {
-        movies = data;
-        initFilters();
-      })
-      .catch(err => console.error('Erreur chargement JSON :', err));
-
-    function initFilters() {
-      const genres    = [...new Set(movies.flatMap(m => m.genres))].sort();
-      const directors = [...new Set(movies.map(m => m.director))].sort();
-      const actors    = [...new Set(movies.flatMap(m => m.actors))].sort();
-
-      const genreEl    = document.getElementById('genreSelect');
-      const directorEl = document.getElementById('directorSelect');
-      const actorEl    = document.getElementById('actorSelect');
-
-      genres.forEach(g => { let o=document.createElement('option'); o.value=o.textContent=g; genreEl.append(o); });
-      directors.forEach(d => { let o=document.createElement('option'); o.value=o.textContent=d; directorEl.append(o); });
-      actors.forEach(a => { let o=document.createElement('option'); o.value=o.textContent=a; actorEl.append(o); });
+    // Fonction générique pour remplir un <select>
+    async function fillSelect(endpoint, selectEl) {
+      try {
+        const res  = await fetch(`${API_BASE}${endpoint}`);
+        if (!res.ok) throw new Error(res.status);
+        const list = await res.json();
+        list.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value       = item;
+          opt.textContent = item;
+          selectEl.append(opt);
+        });
+      } catch (err) {
+        console.error(`Erreur sur ${endpoint}:`, err);
+      }
     }
 
-    document.getElementById('filterForm').addEventListener('submit', e => {
-      e.preventDefault();
-      const form = e.target;
-      const params = {
-        genre:    form.genre.value,
-        year:     form.year.value,
-        director: form.director.value,
-        actor:    form.actor.value
-      };
-
-      let candidates = movies;
-      if (params.genre)    candidates = candidates.filter(m => m.genres.includes(params.genre));
-      if (params.year)     candidates = candidates.filter(m => m.release_date.startsWith(params.year));
-      if (params.director)candidates = candidates.filter(m => m.director === params.director);
-      if (params.actor)    candidates = candidates.filter(m => m.actors.includes(params.actor));
-
-      const random = candidates[Math.floor(Math.random()*candidates.length)];
-      displayMovie(random);
+    // Au chargement, on peuple les dropdowns
+    window.addEventListener('DOMContentLoaded', () => {
+      fillSelect('/genres',    genreEl);
+      fillSelect('/directors', directorEl);
+      fillSelect('/actors',    actorEl);
     });
 
-    function displayMovie(m) {
-      if (!m) {
-        document.getElementById('result').innerHTML = '<p>Aucun film trouvé.</p>';
-        return;
+    // À la soumission, on récupère un film aléatoire
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      resultDiv.textContent = 'Chargement…';
+      const params = new URLSearchParams(new FormData(form));
+      const url    = `${API_BASE}/random-movie?${params}`;
+
+      try {
+        const res = await fetch(url);
+        if (res.status === 404) {
+          resultDiv.innerHTML = '<p>Aucun film trouvé avec ces critères.</p>';
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(res.status);
+        }
+        const m = await res.json();
+        resultDiv.innerHTML = `
+          <div class="movie">
+            <h2>${m.title_fr} <small>(${m.title_original || ''})</small></h2>
+            <img src="${m.poster_url || ''}" alt="Affiche">
+            <p><strong>Réalisateur :</strong> ${m.director}</p>
+            <p><strong>Acteurs :</strong> ${m.actors.join(', ')}</p>
+            <p><strong>Sortie :</strong> ${m.release_date}</p>
+            <p><strong>Note :</strong> ${m.vote_average} (${m.vote_count} votes)</p>
+            <p><strong>Genres :</strong> ${m.genres.join(', ')}</p>
+            <p><strong>Streaming :</strong> ${m.providers.flatrate.join(', ')}</p>
+            <p><strong>Location :</strong> ${m.providers.rent.join(', ')}</p>
+            <p><strong>Achat :</strong> ${m.providers.buy.join(', ')}</p>
+          </div>`;
+      } catch (err) {
+        console.error('Fetch random-movie failed:', err);
+        resultDiv.textContent = "Une erreur est survenue, consulte la console.";
       }
-      document.getElementById('result').innerHTML = `
-        <div class="movie">
-          <h2>${m.title_fr} <small>(${m.title_original||''})</small></h2>
-          <img src="${m.poster_url||''}" alt="Affiche">
-          <p><strong>Réalisateur :</strong> ${m.director}</p>
-          <p><strong>Acteurs :</strong> ${m.actors.join(', ')}</p>
-          <p><strong>Sortie :</strong> ${m.release_date}</p>
-          <p><strong>Note :</strong> ${m.vote_average} (${m.vote_count} votes)</p>
-          <p><strong>Genres :</strong> ${m.genres.join(', ')}</p>
-          <p><strong>Streaming :</strong> ${m.providers.flatrate.join(', ')}</p>
-          <p><strong>Location :</strong> ${m.providers.rent.join(', ')}</p>
-          <p><strong>Achat :</strong> ${m.providers.buy.join(', ')}</p>
-        </div>`;
-    }
+    });
   </script>
+
 </body>
 </html>
