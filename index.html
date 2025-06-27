@@ -78,8 +78,19 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
       resultDiv.textContent = 'Chargement…';
+
+      // 1) Récupère tous les champs
       const params = new URLSearchParams(new FormData(form));
-      const url    = `${API_BASE}/random-movie?${params}`;
+
+      // 2) Supprime les clés dont la valeur est vide
+      for (const key of ['genre','year','start_year','end_year','director','actor']) {
+        if (!params.get(key)) {
+          params.delete(key);
+        }
+      }
+
+      // 3) Construis l’URL avec seulement les filtres remplis
+      const url = `${API_BASE}/random-movie?${params.toString()}`;
       console.log('→ request random-movie with', params.toString());
 
       try {
