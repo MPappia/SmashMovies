@@ -43,6 +43,8 @@
     const genreEl    = document.getElementById('genreSelect');
     const directorEl = document.getElementById('directorList'); // <datalist>
     const actorEl    = document.getElementById('actorList');    // <datalist>
+    const form      = document.getElementById('filterForm');
+    const resultDiv = document.getElementById('result');
     
     async function fillSelect(endpoint, selectEl) {
       const res = await fetch(API_BASE + endpoint);
