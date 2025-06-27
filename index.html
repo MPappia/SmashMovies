@@ -37,12 +37,18 @@
     const form        = document.getElementById('filterForm');
     const resultDiv   = document.getElementById('result');
 
-    // Fonction générique pour remplir un <select>
     async function fillSelect(endpoint, selectEl) {
+      console.log(`→ fetching ${endpoint}`);
       try {
-        const res  = await fetch(`${API_BASE}${endpoint}`);
-        if (!res.ok) throw new Error(res.status);
+        const res  = await fetch(API_BASE + endpoint);
+        console.log(`  status ${res.status}`);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const list = await res.json();
+        console.log(`  received list:`, list);
+        if (!Array.isArray(list)) {
+          console.error(`${endpoint} did not return an array.`);
+          return;
+        }
         list.forEach(item => {
           const opt = document.createElement('option');
           opt.value       = item;
@@ -54,34 +60,33 @@
       }
     }
 
-    // Au chargement, on peuple les dropdowns
     window.addEventListener('DOMContentLoaded', () => {
       fillSelect('/genres',    genreEl);
       fillSelect('/directors', directorEl);
       fillSelect('/actors',    actorEl);
     });
 
-    // À la soumission, on récupère un film aléatoire
     form.addEventListener('submit', async e => {
       e.preventDefault();
       resultDiv.textContent = 'Chargement…';
       const params = new URLSearchParams(new FormData(form));
       const url    = `${API_BASE}/random-movie?${params}`;
+      console.log('→ request random-movie with', params.toString());
 
       try {
         const res = await fetch(url);
+        console.log('  random-movie status', res.status);
         if (res.status === 404) {
-          resultDiv.innerHTML = '<p>Aucun film trouvé avec ces critères.</p>';
+          resultDiv.innerHTML = '<p>Aucun film trouvé.</p>';
           return;
         }
-        if (!res.ok) {
-          throw new Error(res.status);
-        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const m = await res.json();
+        console.log('  random-movie data', m);
         resultDiv.innerHTML = `
           <div class="movie">
-            <h2>${m.title_fr} <small>(${m.title_original || ''})</small></h2>
-            <img src="${m.poster_url || ''}" alt="Affiche">
+            <h2>${m.title_fr} <small>(${m.title_original||''})</small></h2>
+            <img src="${m.poster_url||''}" alt="Affiche">
             <p><strong>Réalisateur :</strong> ${m.director}</p>
             <p><strong>Acteurs :</strong> ${m.actors.join(', ')}</p>
             <p><strong>Sortie :</strong> ${m.release_date}</p>
@@ -93,7 +98,7 @@
           </div>`;
       } catch (err) {
         console.error('Fetch random-movie failed:', err);
-        resultDiv.textContent = "Une erreur est survenue, consulte la console.";
+        resultDiv.textContent = "Erreur, regarde la console.";
       }
     });
   </script>
