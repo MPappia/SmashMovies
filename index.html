@@ -17,19 +17,22 @@
     <select name="genre" id="genreSelect">
       <option value="">Tous les genres</option>
     </select>
-    
+  
     <label for="startYearInput">De :</label>
     <input id="startYearInput" name="start_year" type="number" placeholder="1980">
-    
+  
     <label for="endYearInput">À :</label>
     <input id="endYearInput" name="end_year" type="number" placeholder="2000">
-
-    <select name="director" id="directorSelect">
-      <option value="">Tous les réalisateurs</option>
-    </select>
-    <select name="actor" id="actorSelect">
-      <option value="">Tous les acteurs</option>
-    </select>
+  
+    <!-- Remplacé -->
+    <label for="directorInput">Réalisateur :</label>
+    <input list="directorList" id="directorInput" name="director" placeholder="Tapez ou choisissez…">
+    <datalist id="directorList"></datalist>
+  
+    <label for="actorInput">Acteur :</label>
+    <input list="actorList" id="actorInput" name="actor" placeholder="Tapez ou choisissez…">
+    <datalist id="actorList"></datalist>
+  
     <button type="submit">Surprise-moi !</button>
   </form>
 
@@ -37,39 +40,36 @@
 
   <script>
     const API_BASE    = 'http://127.0.0.1:8000';
-    const genreEl     = document.getElementById('genreSelect');
-    const directorEl  = document.getElementById('directorSelect');
-    const actorEl     = document.getElementById('actorSelect');
-    const form        = document.getElementById('filterForm');
-    const resultDiv   = document.getElementById('result');
-
+    const genreEl    = document.getElementById('genreSelect');
+    const directorEl = document.getElementById('directorList'); // <datalist>
+    const actorEl    = document.getElementById('actorList');    // <datalist>
+    
     async function fillSelect(endpoint, selectEl) {
-      console.log(`→ fetching ${endpoint}`);
-      try {
-        const res  = await fetch(API_BASE + endpoint);
-        console.log(`  status ${res.status}`);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const list = await res.json();
-        console.log(`  received list:`, list);
-        if (!Array.isArray(list)) {
-          console.error(`${endpoint} did not return an array.`);
-          return;
-        }
-        list.forEach(item => {
-          const opt = document.createElement('option');
-          opt.value       = item;
-          opt.textContent = item;
-          selectEl.append(opt);
-        });
-      } catch (err) {
-        console.error(`Erreur sur ${endpoint}:`, err);
-      }
+      const res = await fetch(API_BASE + endpoint);
+      if (!res.ok) throw new Error(res.status);
+      (await res.json()).forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.textContent = item;
+        selectEl.append(opt);
+      });
     }
-
+    
+    // même fonction, mais pour le datalist (sans texte visible à l’utilisateur)
+    async function fillDatalist(endpoint, datalistEl) {
+      const res = await fetch(API_BASE + endpoint);
+      if (!res.ok) throw new Error(res.status);
+      (await res.json()).forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        datalistEl.append(opt);
+      });
+    }
+    
     window.addEventListener('DOMContentLoaded', () => {
       fillSelect('/genres',    genreEl);
-      fillSelect('/directors', directorEl);
-      fillSelect('/actors',    actorEl);
+      fillDatalist('/directors', directorEl);
+      fillDatalist('/actors',    actorEl);
     });
 
     form.addEventListener('submit', async e => {
