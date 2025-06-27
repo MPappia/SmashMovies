@@ -18,7 +18,6 @@
       <option value="">Tous les genres</option>
     </select>
     
-    
     <label for="startYearInput">De :</label>
     <input id="startYearInput" name="start_year" type="number" placeholder="1980">
     
@@ -77,11 +76,8 @@
       e.preventDefault();
       resultDiv.textContent = 'Chargement…';
 
-      // 1) Récupère tous les champs
       const params = new URLSearchParams(new FormData(form));
-
-      // 2) Supprime les clés dont la valeur est vide
-      for (const key of ['genre','year','start_year','end_year','director','actor']) {
+      for (const key of ['genre','start_year','end_year','director','actor']) {
         if (!params.get(key)) {
           params.delete(key);
         }
